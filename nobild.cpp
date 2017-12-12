@@ -102,6 +102,8 @@ NobildParseXML(QString & output, const QByteArray & data, float kw_min)
 	    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
 	    "<gpx xmlns=\"http://www.topografix.com/GPX/1/1\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd\" version=\"1.1\" creator=\"home.selasky.org/charging - datagrunnlaget er hentet fra http://nobil.no\">";
 
+	memset(owner_stats, 0, sizeof(owner_stats));
+
 	while (!xml.atEnd()) {
 		if (token == QXmlStreamReader::NoToken)
 			token = xml.readNext();
