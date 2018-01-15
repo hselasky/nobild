@@ -46,6 +46,7 @@
 enum {
 	TYPE_CCS,
 	TYPE_CHADEMO,
+	TYPE_2,
 	TYPE_OTHER,
 	TYPE_MAX,
 };

@@ -72,14 +72,16 @@ NobildType2Str(int value)
 	case TYPE_CCS:
 		return ("CCS");
 	case TYPE_CHADEMO:
-		return ("CHAdeMO");
+		return ("CHA");
+	case TYPE_2:
+		return ("TP2");
 	default:
-		return ("Unknown");
+		return ("UNK");
 	}
 }
 
 static void
-NobildParseXML(QString & output, const QByteArray & data, float kw_min)
+NobildParseXML(QString & output, const QByteArray & data, float kw_min, bool invert)
 {
 	QXmlStreamReader:: TokenType token = QXmlStreamReader::NoToken;
 	QXmlStreamReader xml(data);
@@ -97,6 +99,7 @@ NobildParseXML(QString & output, const QByteArray & data, float kw_min)
 	int opt_24h;
 	int opt_owner;
 	size_t si = 0;
+	bool match;
 
 	output =
 	    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
@@ -283,7 +286,12 @@ NobildParseXML(QString & output, const QByteArray & data, float kw_min)
 					}
 				}
 
-				if (offset == 0 && opt_public && opt_24h && x == -1 && opt_capacity_max >= kw_min) {
+				if (invert)
+					match = (opt_capacity_max < kw_min);
+				else
+					match = (opt_capacity_max >= kw_min);
+
+				if (offset == 0 && opt_public && opt_24h && x == -1 && match) {
 					title += NobildOwner2Str(owner);
 					if (opt_capacity_max != 0.0) {
 						if (opt_capacity_min == opt_capacity_max) {
@@ -353,6 +361,8 @@ NobildParseXML(QString & output, const QByteArray & data, float kw_min)
 						opt_type[TYPE_CCS]++;
 					else if (trans.indexOf("CHAdeMO") > -1)
 						opt_type[TYPE_CHADEMO]++;
+					else if (trans.indexOf("Type 2") > -1)
+						opt_type[TYPE_2]++;
 					else
 						opt_type[TYPE_OTHER]++;
 				}
@@ -405,23 +415,35 @@ top:;
 	for (int x = 0; ; x++) {
 		QString suffix;
 		float limit;
+		bool invert;
 
 		if (x == 0) {
 			suffix = "all";
 			limit = 0;
+			invert = 0;
 		} else if (x == 1) {
-			suffix = "20";
+			suffix = "20";			
 			limit = 20;
+			invert = 0;
 		} else if (x == 2) {
+			suffix = "20_inv";
+			limit = 20;
+			invert = 1;
+		} else if (x == 3) {
 			suffix = "40";
 			limit = 40;
+			invert = 0;
+		} else if (x == 4) {
+			suffix = "40_inv";
+			limit = 40;
+			invert = 1;
 		} else {
 			break;
 		}
 		    
 		QString output;
 
-		NobildParseXML(output, data, limit);
+		NobildParseXML(output, data, limit, invert);
 
 		QFile file(output_directory + "/ev_charger_stations_" + suffix + ".gpx");
 
