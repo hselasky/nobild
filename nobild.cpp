@@ -291,8 +291,11 @@ NobildParseXML(QString & output, const QByteArray & data, float kw_min, bool inv
 				else
 					match = (opt_capacity_max >= kw_min);
 
-				if (offset == 0 && opt_public && opt_24h && x == -1 && match) {
-					title += NobildOwner2Str(owner);
+				if (offset == 0 && opt_public && x == -1 && match) {
+					if (owner == OWNER_OTHER && !name.isEmpty())
+						title += name;
+					else
+						title += NobildOwner2Str(owner);
 					if (opt_capacity_max != 0.0) {
 						if (opt_capacity_min == opt_capacity_max) {
 							title += QString(" %1kW").arg((int)opt_capacity_min);
@@ -306,6 +309,8 @@ NobildParseXML(QString & output, const QByteArray & data, float kw_min, bool inv
 							continue;
 						title += QString(" %1:%2").arg(NobildType2Str(x)).arg(opt_type[x]);
 					}
+					if (!opt_24h)
+						title += " not open 24/7";
 					output += QString("<wpt lat=\"%1\" lon=\"%2\"><name>%3</name></wpt>").arg(coord[0]).arg(coord[1]).arg(title);
 					owner_stats[owner]++;
 				}
