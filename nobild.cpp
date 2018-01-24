@@ -292,9 +292,13 @@ NobildParseXML(QString & output, const QByteArray & data, float kw_min, bool inv
 					match = (opt_capacity_max >= kw_min);
 
 				if (offset == 0 && opt_public && x == -1 && match) {
-					if (owner == OWNER_OTHER && !name.isEmpty())
-						title += name;
-					else
+					if (owner == OWNER_OTHER && !name.isEmpty()) {
+						int strip = name.indexOf(',');
+						if (strip > -1)
+							title += name.left(strip);
+						else
+							title += name;
+					} else
 						title += NobildOwner2Str(owner);
 					if (opt_capacity_max != 0.0) {
 						if (opt_capacity_min == opt_capacity_max) {
