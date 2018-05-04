@@ -531,7 +531,7 @@ top:;
 	QByteArray data = fetch.readAllStandardOutput();		  
 	QProcess convert;
 
-	kw_mask = (1ULL << KW_MAX);
+	kw_mask = (2ULL << KW_MAX) - 1;
 	while (kw_mask != -1LL) {
 		kw_mask >>= 1;
 		if (kw_mask == 0)
