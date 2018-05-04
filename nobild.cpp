@@ -60,7 +60,7 @@ NobildOwner2Str(int value)
 	case OWNER_GRONNKONTAKT:
 		return ("Grønn Kontakt");
 	default:
-		return ("Unknown");
+		return ("Other");
 	}
 }
 
@@ -80,8 +80,25 @@ NobildType2Str(int value)
 	}
 }
 
+static	QString
+NobildType2StrFull(int value)
+{
+
+	switch (value) {
+	case TYPE_CCS:
+		return ("CCS EUR");
+	case TYPE_CHADEMO:
+		return ("CHADEMO");
+	case TYPE_2:
+		return ("TYPE2");
+	default:
+		return ("Other");
+	}
+}
+
 static void
-NobildParseXML(QString & output, const QByteArray & data, float kw_min, bool invert)
+NobildParseXML(QString & output, const QByteArray & data,
+    uint64_t type_mask, uint64_t kw_mask, uint64_t owner_mask)
 {
 	QXmlStreamReader:: TokenType token = QXmlStreamReader::NoToken;
 	QXmlStreamReader xml(data);
@@ -100,6 +117,7 @@ NobildParseXML(QString & output, const QByteArray & data, float kw_min, bool inv
 	int opt_owner;
 	size_t si = 0;
 	bool match;
+	bool temp;
 
 	output =
 	    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
@@ -286,10 +304,32 @@ NobildParseXML(QString & output, const QByteArray & data, float kw_min, bool inv
 					}
 				}
 
-				if (invert)
-					match = (opt_capacity_max < kw_min);
-				else
-					match = (opt_capacity_max >= kw_min);
+				match = 1;
+
+				temp = 0;
+				if (kw_mask & KW_0_20_MASK)
+					temp |= (opt_capacity_max >= 0 && opt_capacity_max < 20);
+				if (kw_mask & KW_20_40_MASK)
+					temp |= (opt_capacity_max >= 20 && opt_capacity_max < 40);
+				if (kw_mask & KW_40_MAX_MASK)
+					temp |= (opt_capacity_max >= 40);
+
+				match &= temp;
+
+				temp = 0;
+				if (owner_mask & (1 << owner))
+					temp = 1;
+
+				match &= temp;
+
+				temp = 0;
+
+				for (int x = 0; x != TYPE_MAX; x++) {
+					if (opt_type[x] != 0 && (type_mask & (1 << x)))
+						temp = 1;
+				}
+
+				match &= temp;
 
 				if (offset == 0 && opt_public && x == -1 && match) {
 					if (owner == OWNER_OTHER && !name.isEmpty()) {
@@ -407,7 +447,77 @@ usage(void)
 static void *
 worker(void *arg)
 {
+	int64_t owner_mask;
+	int64_t type_mask;
+	int64_t kw_mask;
+	QString suffix;
 top:;
+
+	QString js;
+
+	js += "document.write(\'";
+	js += "<form id=\"mainForm\" name=\"mainForm\">";
+
+	js += "<table style=\"width:100%\">";
+	js += "<tr>";
+	js += "<th>";
+	js += "<div align=\"left\"><div align=\"top\">";
+	js += "<input type=\"radio\" name=\"kw\" value=\"-1\" checked=\"checked\" /> All kW rates<br>";
+	js += "<input type=\"radio\" name=\"kw\" value=\"1\" /> Less than 20 kW<br>";
+	js += "<input type=\"radio\" name=\"kw\" value=\"3\" /> Less than 40 kW<br>";
+	js += "<input type=\"radio\" name=\"kw\" value=\"-2\" /> More than 20 kW<br>";
+	js += "<input type=\"radio\" name=\"kw\" value=\"-4\" /> More than 40 kW<br>";
+	js += "</div></div>";
+	js += "</th>";
+
+	js += "<th>";
+	js += "<div align=\"left\"><div align=\"top\">";
+	js += "<input type=\"radio\" name=\"station\" value=\"-1\" checked=\"checked\" /> All stations<br>";
+	for (int x = 0; x != OWNER_MAX; x++) {
+		js += QString("<input type=\"radio\" name=\"station\" value=\"%1\" /> %2<br>")
+		    .arg(1ULL << x)
+		    .arg(NobildOwner2Str(x));
+	}
+	js += "</div></div>";
+	js += "</th>";
+
+	js += "<th>";
+	js += "<div align=\"left\"><div align=\"top\">";
+	js += "<input type=\"radio\" name=\"connector\" value=\"-1\" checked=\"checked\" /> All connectors<br>";
+	for (int x = 0; x != TYPE_MAX; x++) {
+		js += QString("<input type=\"radio\" name=\"connector\" value=\"%1\" /> %2<br>")
+		    .arg(1ULL << x)
+		    .arg(NobildType2StrFull(x));
+	}
+	js += "</div></div>";
+	js += "</th>";
+	js += "</table><br>";
+	js += "<button name=\"btn_gpx\">Download GPX</button> ";
+	js += "<button name=\"btn_kml\">Download KML</button><br>";
+	js += "</form>";
+	js += "\');\n";
+
+	js += "document.mainForm.btn_gpx.onclick = function(){\n";
+	js += "var fname = \"ev_charger_stations_\" + document.mainForm.connector.value + "
+	    "\"_\" + document.mainForm.kw.value + \"_\" + document.mainForm.station.value + \".gpx\";";
+	js += "window.open(fname);\n";
+	js += "}\n";
+
+	js += "document.mainForm.btn_kml.onclick = function(){\n";
+	js += "var fname = \"ev_charger_stations_\" + document.mainForm.connector.value + "
+	    "\"_\" + document.mainForm.kw.value + \"_\" + document.mainForm.station.value + \".kml\";";
+	js += "window.open(fname);\n";
+	js += "}\n";
+
+	QFile file(output_directory + "/ev_charger_stations.js");
+
+	if (!file.open(QFile::WriteOnly | QFile::Truncate)) {
+		sleep(3600);
+		goto top;
+	}
+	file.write(js.toUtf8());
+	file.close();
+
 	QProcess fetch;
 
 	fetch.start(QString("fetch -qo /dev/stdout http://nobil.no/api/server/datadump.php?apikey=%1&format=xml&file=false").arg(apikey));
@@ -421,57 +531,54 @@ top:;
 	QByteArray data = fetch.readAllStandardOutput();		  
 	QProcess convert;
 
-	for (int x = 0; ; x++) {
-		QString suffix;
-		float limit;
-		bool invert;
+	kw_mask = (1ULL << KW_MAX);
+	while (kw_mask != -1LL) {
+		kw_mask >>= 1;
+		if (kw_mask == 0)
+			kw_mask = -(1ULL << (KW_MAX - 1));
 
-		if (x == 0) {
-			suffix = "all";
-			limit = 0;
-			invert = 0;
-		} else if (x == 1) {
-			suffix = "20";			
-			limit = 20;
-			invert = 0;
-		} else if (x == 2) {
-			suffix = "20_inv";
-			limit = 20;
-			invert = 1;
-		} else if (x == 3) {
-			suffix = "40";
-			limit = 40;
-			invert = 0;
-		} else if (x == 4) {
-			suffix = "40_inv";
-			limit = 40;
-			invert = 1;
-		} else {
-			break;
-		}
-		    
-		QString output;
+		type_mask = (1ULL << TYPE_MAX);
+		while (type_mask != -1LL) {
+			type_mask >>= 1;
+			if (type_mask == 0)
+				type_mask = -1LL;
+		  
+			owner_mask = (1ULL << OWNER_MAX);
+			while (owner_mask != -1LL) {
+				owner_mask >>= 1;
+				if (owner_mask == 0)
+					owner_mask = -1LL;
 
-		NobildParseXML(output, data, limit, invert);
+				suffix = QString("%1_%2_%3")
+				  .arg((int64_t)type_mask)
+				  .arg((int64_t)kw_mask)
+				  .arg((int64_t)owner_mask);
 
-		QFile file(output_directory + "/ev_charger_stations_" + suffix + ".gpx");
+				QString output;
 
-		if (!file.open(QFile::WriteOnly | QFile::Truncate)) {
-			sleep(3600);
-			goto top;
-		}
-		file.write(output.toUtf8());
-		file.close();
+				NobildParseXML(output, data, type_mask, kw_mask, owner_mask);
 
-		convert.start(QString("gpsbabel -i gpx -o kml ") + output_directory + "/ev_charger_stations_" + suffix + ".gpx " +
-			      output_directory + "/ev_charger_stations_" + suffix + ".kml");
-		convert.waitForFinished(-1);
+				QFile file(output_directory + "/ev_charger_stations_" + suffix + ".gpx");
+
+				if (!file.open(QFile::WriteOnly | QFile::Truncate)) {
+					sleep(3600);
+					goto top;
+				}
+				file.write(output.toUtf8());
+				file.close();
+
+				convert.start(QString("gpsbabel -i gpx -o kml ") + output_directory + "/ev_charger_stations_" + suffix + ".gpx " +
+				    output_directory + "/ev_charger_stations_" + suffix + ".kml");
+				convert.waitForFinished(-1);
 				      
-		if (convert.exitStatus() != QProcess::NormalExit) {
-			sleep(3600);
-			goto top;
+				if (convert.exitStatus() != QProcess::NormalExit) {
+					sleep(3600);
+					goto top;
+				}
+			}
 		}
 	}
+
 	exit(0);
 	return (NULL);
 }
