@@ -65,6 +65,24 @@ NobildOwner2Str(int value)
 }
 
 static	QString
+NobildOwner2Link(int value)
+{
+
+	switch (value) {
+	case OWNER_CLEVER:
+		return ("https://clever.dk");
+	case OWNER_EON:
+		return ("https://www.eon.com");
+	case OWNER_FORTUM:
+		return ("https://fortum.no");
+	case OWNER_GRONNKONTAKT:
+		return ("https://gronnkontakt.no");
+	default:
+		return ("index.html");
+	}
+}
+
+static	QString
 NobildType2Str(int value)
 {
 
@@ -93,6 +111,22 @@ NobildType2StrFull(int value)
 		return ("TYPE2");
 	default:
 		return ("Other");
+	}
+}
+
+static	QString
+NobildType2Link(int value)
+{
+
+	switch (value) {
+	case TYPE_CCS:
+		return ("https://en.wikipedia.org/wiki/Combined_Charging_System");
+	case TYPE_CHADEMO:
+		return ("https://en.wikipedia.org/wiki/CHAdeMO");
+	case TYPE_2:
+		return ("https://en.wikipedia.org/wiki/Type_2_connector");
+	default:
+		return ("index.html");
 	}
 }
 
@@ -335,11 +369,27 @@ NobildParseXML(QString & output, const QByteArray & data,
 					if (owner == OWNER_OTHER && !name.isEmpty()) {
 						int strip = name.indexOf(',');
 						if (strip > -1)
-							title += name.left(strip);
+							title += name.left(strip).trimmed();
 						else
 							title += name;
-					} else
+					} else if (!name.isEmpty()) {
+						QString tt;
+
+						int strip = name.indexOf(',');
+						if (strip > -1)
+							tt += name.left(strip).trimmed();
+						else
+							tt += name.trimmed();
+
+						if (NobildStr2Owner(tt) == OWNER_OTHER) {
+							title += NobildOwner2Str(owner);
+							title += " ";
+						}
+						title += tt;
+					} else {
 						title += NobildOwner2Str(owner);
+					}
+
 					if (opt_capacity_max != 0.0) {
 						if (opt_capacity_min == opt_capacity_max) {
 							title += QString(" %1kW").arg((int)opt_capacity_min);
@@ -474,8 +524,9 @@ top:;
 	js += "<div align=\"left\"><div align=\"top\">";
 	js += "<input type=\"radio\" name=\"station\" value=\"-1\" checked=\"checked\" /> All stations<br>";
 	for (int x = 0; x != OWNER_MAX; x++) {
-		js += QString("<input type=\"radio\" name=\"station\" value=\"%1\" /> %2<br>")
+		js += QString("<input type=\"radio\" name=\"station\" value=\"%1\" /> <a href=\"%2\">%3</a><br>")
 		    .arg(1ULL << x)
+		    .arg(NobildOwner2Link(x))
 		    .arg(NobildOwner2Str(x));
 	}
 	js += "</div></div>";
@@ -485,8 +536,9 @@ top:;
 	js += "<div align=\"left\"><div align=\"top\">";
 	js += "<input type=\"radio\" name=\"connector\" value=\"-1\" checked=\"checked\" /> All connectors<br>";
 	for (int x = 0; x != TYPE_MAX; x++) {
-		js += QString("<input type=\"radio\" name=\"connector\" value=\"%1\" /> %2<br>")
+		js += QString("<input type=\"radio\" name=\"connector\" value=\"%1\" /> <a href=\"%2\">%3<br>")
 		    .arg(1ULL << x)
+		    .arg(NobildType2Link(x))
 		    .arg(NobildType2StrFull(x));
 	}
 	js += "</div></div>";
