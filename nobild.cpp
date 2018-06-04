@@ -42,6 +42,8 @@ NobildStr2Owner(const QString & str)
 		return (OWNER_FORTUM);
 	else if (upper.indexOf("GRØNN KONTAKT") > -1)
 		return (OWNER_GRONNKONTAKT);
+	else if (upper.indexOf("TESLA") > -1)
+		return (OWNER_TESLA);
 	else
 		return (OWNER_OTHER);
 }
@@ -59,6 +61,8 @@ NobildOwner2Str(int value)
 		return ("Fortum");
 	case OWNER_GRONNKONTAKT:
 		return ("Grønn Kontakt");
+	case OWNER_TESLA:
+		return ("Tesla");
 	default:
 		return ("Other");
 	}
@@ -77,6 +81,8 @@ NobildOwner2Link(int value)
 		return ("https://fortum.no");
 	case OWNER_GRONNKONTAKT:
 		return ("https://gronnkontakt.no");
+	case OWNER_TESLA:
+		return ("https://www.tesla.com");
 	default:
 		return ("index.html");
 	}
@@ -93,6 +99,8 @@ NobildType2Str(int value)
 		return ("CHA");
 	case TYPE_2:
 		return ("TP2");
+	case TYPE_TESLA:
+		return ("TES");
 	default:
 		return ("UNK");
 	}
@@ -106,9 +114,11 @@ NobildType2StrFull(int value)
 	case TYPE_CCS:
 		return ("CCS EUR");
 	case TYPE_CHADEMO:
-		return ("CHADEMO");
+		return ("CHAdeMO");
 	case TYPE_2:
-		return ("TYPE2");
+		return ("Type 2");
+	case TYPE_TESLA:
+		return ("Tesla connector");
 	default:
 		return ("Other");
 	}
@@ -125,6 +135,8 @@ NobildType2Link(int value)
 		return ("https://en.wikipedia.org/wiki/CHAdeMO");
 	case TYPE_2:
 		return ("https://en.wikipedia.org/wiki/Type_2_connector");
+	case TYPE_TESLA:
+		return ("https://en.wikipedia.org/wiki/Tesla_Supercharger");
 	default:
 		return ("index.html");
 	}
@@ -462,6 +474,8 @@ NobildParseXML(QString & output, const QByteArray & data,
 						opt_type[TYPE_CHADEMO]++;
 					else if (trans.indexOf("Type 2") > -1)
 						opt_type[TYPE_2]++;
+					else if (trans.indexOf("Tesla Connector Model") > -1)
+						opt_type[TYPE_TESLA]++;
 					else
 						opt_type[TYPE_OTHER]++;
 				}
