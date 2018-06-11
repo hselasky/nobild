@@ -550,7 +550,7 @@ top:;
 	js += "<div align=\"left\"><div align=\"top\">";
 	js += "<input type=\"radio\" name=\"connector\" value=\"-1\" checked=\"checked\" /> All connectors<br>";
 	for (int x = 0; x != TYPE_MAX; x++) {
-		js += QString("<input type=\"radio\" name=\"connector\" value=\"%1\" /> <a href=\"%2\">%3<br>")
+		js += QString("<input type=\"radio\" name=\"connector\" value=\"%1\" /> <a href=\"%2\">%3</a><br>")
 		    .arg(1ULL << x)
 		    .arg(NobildType2Link(x))
 		    .arg(NobildType2StrFull(x));
