@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2017 Hans Petter Selasky. All rights reserved.
+ * Copyright (c) 2017-2019 Hans Petter Selasky. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,7 +25,6 @@
 
 #include "nobild.h"
 
-static size_t owner_stats[OWNER_MAX];
 static QString apikey;
 static QString output_directory = ".";
 
@@ -143,8 +142,55 @@ NobildType2Link(int value)
 }
 
 static void
-NobildParseXML(QString & output, const QByteArray & data,
-    uint64_t type_mask, uint64_t kw_mask, uint64_t owner_mask)
+NobildOutputXML(nobild_head_t *phead, QString & output, uint64_t type_mask, uint64_t kw_mask, uint64_t owner_mask)
+{
+	size_t owner_stats[OWNER_MAX] = {};
+	nobild_cache *pc;
+
+	output =
+	    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+	    "<gpx xmlns=\"http://www.topografix.com/GPX/1/1\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd\" version=\"1.1\" creator=\"home.selasky.org/charging - datagrunnlaget er hentet fra http://nobil.no\">\n";
+
+	TAILQ_FOREACH(pc, phead, entry) {
+		bool found = 0;
+		int x;
+
+		if (!(owner_mask & (1 << pc->owner)))
+			continue;
+
+		if (kw_mask & KW_0_20_MASK)
+			found |= (pc->capacity_max >= 0 && pc->capacity_max < 20);
+		if (kw_mask & KW_20_40_MASK)
+			found |= (pc->capacity_max >= 20 && pc->capacity_max < 40);
+		if (kw_mask & KW_40_MAX_MASK)
+			found |= (pc->capacity_max >= 40);
+
+		if (found == 0)
+			continue;
+
+		found = 0;
+		for (x = 0; x != TYPE_MAX; x++)
+			found |= (pc->type[x] != 0 && (type_mask & (1 << x)));
+
+		if (found == 0)
+			continue;
+
+		output += pc->output;
+		output += "\n";
+
+		owner_stats[pc->owner]++;
+	}
+	output += "</gpx>\n";
+
+	output += "<!-- ";
+	for (int x = 0; x != OWNER_MAX; x++) {
+		output += QString("%1:%2 ").arg(NobildOwner2Str(x)).arg(owner_stats[x]);
+	}
+	output += "-->";
+}
+
+static void
+NobildParseXML(const QByteArray & data, nobild_head_t *phead)
 {
 	QXmlStreamReader:: TokenType token = QXmlStreamReader::NoToken;
 	QXmlStreamReader xml(data);
@@ -160,16 +206,7 @@ NobildParseXML(QString & output, const QByteArray & data,
 	size_t opt_type[TYPE_MAX];
 	int opt_public;
 	int opt_24h;
-	int opt_owner;
 	size_t si = 0;
-	bool match;
-	bool temp;
-
-	output =
-	    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-	    "<gpx xmlns=\"http://www.topografix.com/GPX/1/1\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd\" version=\"1.1\" creator=\"home.selasky.org/charging - datagrunnlaget er hentet fra http://nobil.no\">";
-
-	memset(owner_stats, 0, sizeof(owner_stats));
 
 	while (!xml.atEnd()) {
 		if (token == QXmlStreamReader::NoToken)
@@ -177,7 +214,7 @@ NobildParseXML(QString & output, const QByteArray & data,
 
 		switch (token) {
 		case QXmlStreamReader:: Invalid:
-			goto done;
+			return;
 		case QXmlStreamReader:: StartElement:
 			if (si < NOBILD_MAX_TAGS)
 				tags[si] = xml.name().toString().toLower();
@@ -194,7 +231,6 @@ NobildParseXML(QString & output, const QByteArray & data,
 				opt_public = 0;
 				opt_capacity_min = 0;
 				opt_capacity_max = 0;
-				opt_owner = OWNER_OTHER;
 			} else if (si == 4 &&
 				   tags[0] == "chargerstations" &&
 				   tags[1] == "chargerstation" &&
@@ -350,34 +386,7 @@ NobildParseXML(QString & output, const QByteArray & data,
 					}
 				}
 
-				match = 1;
-
-				temp = 0;
-				if (kw_mask & KW_0_20_MASK)
-					temp |= (opt_capacity_max >= 0 && opt_capacity_max < 20);
-				if (kw_mask & KW_20_40_MASK)
-					temp |= (opt_capacity_max >= 20 && opt_capacity_max < 40);
-				if (kw_mask & KW_40_MAX_MASK)
-					temp |= (opt_capacity_max >= 40);
-
-				match &= temp;
-
-				temp = 0;
-				if (owner_mask & (1 << owner))
-					temp = 1;
-
-				match &= temp;
-
-				temp = 0;
-
-				for (int x = 0; x != TYPE_MAX; x++) {
-					if (opt_type[x] != 0 && (type_mask & (1 << x)))
-						temp = 1;
-				}
-
-				match &= temp;
-
-				if (offset == 0 && opt_public && x == -1 && match) {
+				if (offset == 0 && opt_public && x == -1) {
 					if (owner == OWNER_OTHER && !name.isEmpty()) {
 						int strip = name.indexOf(',');
 						if (strip > -1)
@@ -417,8 +426,17 @@ NobildParseXML(QString & output, const QByteArray & data,
 					}
 					if (!opt_24h)
 						title += " not open 24/7";
-					output += QString("<wpt lat=\"%1\" lon=\"%2\"><name>%3</name></wpt>").arg(coord[0]).arg(coord[1]).arg(title);
-					owner_stats[owner]++;
+
+					nobild_cache *pc = new nobild_cache;
+
+					pc->output = QString("<wpt lat=\"%1\" lon=\"%2\"><name>%3</name></wpt>")
+					    .arg(coord[0]).arg(coord[1]).arg(title);
+					pc->owner = owner;
+					pc->capacity_min = opt_capacity_min;
+					pc->capacity_max = opt_capacity_max;
+					for (int z = 0; z != TYPE_MAX; z++)
+						pc->type[z] = opt_type[z];
+					TAILQ_INSERT_TAIL(phead, pc, entry);
 				}
 			} else if (si == 5 &&
 				   tags[0] == "chargerstations" &&
@@ -489,35 +507,35 @@ NobildParseXML(QString & output, const QByteArray & data,
 		}
 		token = QXmlStreamReader::NoToken;
 	}
-done:
-	output += "</gpx>";
-
-	int x;
-
-	output += "<!-- ";
-	for (x = 0; x != OWNER_MAX; x++) {
-		output += QString("%1:%2 ").arg(NobildOwner2Str(x)).arg(owner_stats[x]);
-	}
-	output += "-->";
 }
 
 static void
-usage(void)
+NobildCleanup(nobild_head_t *phead)
 {
-	fprintf(stderr, "usage: nobild\n");
-	exit(EX_USAGE);
+	nobild_cache *pc;
+
+	while ((pc = TAILQ_FIRST(phead))) {
+		TAILQ_REMOVE(phead, pc, entry);
+		delete pc;
+	}
 }
 
-static void *
-worker(void *arg)
+static int
+NobildOutputJS(nobild_head_t *phead)
 {
-	int64_t owner_mask;
-	int64_t type_mask;
-	int64_t kw_mask;
-	QString suffix;
-top:;
-
+	size_t type_max[TYPE_MAX] = {};
+	size_t owner_max[OWNER_MAX] = {};
+	size_t owner_total = 0;
+	nobild_cache *pc;
 	QString js;
+
+	TAILQ_FOREACH(pc, phead, entry) {
+		owner_max[pc->owner]++;
+		owner_total++;
+		for (int x = 0; x != TYPE_MAX; x++) {
+			type_max[x] += pc->type[x];
+		}
+	}
 
 	js += "document.write(\'";
 	js += "<form id=\"mainForm\" name=\"mainForm\">";
@@ -536,12 +554,14 @@ top:;
 
 	js += "<th>";
 	js += "<div align=\"left\"><div align=\"top\">";
-	js += "<input type=\"radio\" name=\"station\" value=\"-1\" checked=\"checked\" /> All stations<br>";
+	js += QString("<input type=\"radio\" name=\"station\" value=\"-1\" checked=\"checked\" /> All stations (%1 in total)<br>").arg(owner_total);
+
 	for (int x = 0; x != OWNER_MAX; x++) {
-		js += QString("<input type=\"radio\" name=\"station\" value=\"%1\" /> <a href=\"%2\">%3</a><br>")
+		js += QString("<input type=\"radio\" name=\"station\" value=\"%1\" /> <a href=\"%2\">%3 (%4)</a><br>")
 		    .arg(1ULL << x)
 		    .arg(NobildOwner2Link(x))
-		    .arg(NobildOwner2Str(x));
+		    .arg(NobildOwner2Str(x))
+		    .arg(owner_max[x]);
 	}
 	js += "</div></div>";
 	js += "</th>";
@@ -550,10 +570,11 @@ top:;
 	js += "<div align=\"left\"><div align=\"top\">";
 	js += "<input type=\"radio\" name=\"connector\" value=\"-1\" checked=\"checked\" /> All connectors<br>";
 	for (int x = 0; x != TYPE_MAX; x++) {
-		js += QString("<input type=\"radio\" name=\"connector\" value=\"%1\" /> <a href=\"%2\">%3</a><br>")
+		js += QString("<input type=\"radio\" name=\"connector\" value=\"%1\" /> <a href=\"%2\">%3 (%4)</a><br>")
 		    .arg(1ULL << x)
 		    .arg(NobildType2Link(x))
-		    .arg(NobildType2StrFull(x));
+		    .arg(NobildType2StrFull(x))
+		    .arg(type_max[x]);
 	}
 	js += "</div></div>";
 	js += "</th>";
@@ -577,12 +598,34 @@ top:;
 
 	QFile file(output_directory + "/ev_charger_stations.js");
 
-	if (!file.open(QFile::WriteOnly | QFile::Truncate)) {
-		sleep(3600);
-		goto top;
-	}
+	if (!file.open(QFile::WriteOnly | QFile::Truncate))
+		return (EINVAL);
+
 	file.write(js.toUtf8());
 	file.close();
+	return (0);
+}
+
+static void
+usage(void)
+{
+	fprintf(stderr, "usage: nobild\n");
+	exit(EX_USAGE);
+}
+
+static void *
+worker(void *arg)
+{
+	int64_t owner_mask;
+	int64_t type_mask;
+	int64_t kw_mask;
+	QString suffix;
+	nobild_head_t head;
+
+	TAILQ_INIT(&head);
+
+top:
+	NobildCleanup(&head);
 
 	QProcess fetch;
 
@@ -594,8 +637,15 @@ top:;
 		goto top;
 	}
 
-	QByteArray data = fetch.readAllStandardOutput();		  
+	QByteArray data = fetch.readAllStandardOutput();
 	QProcess convert;
+
+	NobildParseXML(data, &head);
+
+	if (NobildOutputJS(&head)) {
+		sleep(3600);
+		goto top;
+	}
 
 	kw_mask = (1ULL << KW_MAX) - 1;
 	while (kw_mask != -1LL) {
@@ -622,7 +672,7 @@ top:;
 
 				QString output;
 
-				NobildParseXML(output, data, type_mask, kw_mask, owner_mask);
+				NobildOutputXML(&head, output, type_mask, kw_mask, owner_mask);
 
 				QFile file(output_directory + "/ev_charger_stations_" + suffix + ".gpx");
 
@@ -644,6 +694,8 @@ top:;
 			}
 		}
 	}
+
+	NobildCleanup(&head);
 
 	exit(0);
 	return (NULL);

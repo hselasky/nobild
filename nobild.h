@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2017 Hans Petter Selasky. All rights reserved.
+ * Copyright (c) 2017-2019 Hans Petter Selasky. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,8 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <iostream>
+
+#include <sys/queue.h>
 
 #include <QApplication>
 #include <QXmlStreamReader>
@@ -89,5 +91,17 @@ enum {
 	KW_20_40_MASK = 1 << KW_20_40,
 	KW_40_MAX_MASK = 1 << KW_40_MAX,
 };
+
+class nobild_cache {
+public:
+	TAILQ_CLASS_ENTRY(nobild_cache) entry;
+	QString output;
+	int owner;
+	float capacity_min;
+	float capacity_max;
+  	size_t type[TYPE_MAX];
+};
+
+typedef TAILQ_CLASS_HEAD(, nobild_cache) nobild_head_t;
 
 #endif					/* _NOBILD_H_ */
