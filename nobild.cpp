@@ -43,6 +43,8 @@ NobildStr2Owner(const QString & str)
 		return (OWNER_GRONNKONTAKT);
 	else if (upper.indexOf("TESLA") > -1)
 		return (OWNER_TESLA);
+	else if (upper.indexOf("IONITY") > -1)
+		return (OWNER_IONITY);
 	else
 		return (OWNER_OTHER);
 }
@@ -62,6 +64,8 @@ NobildOwner2Str(int value)
 		return ("Grønn Kontakt");
 	case OWNER_TESLA:
 		return ("Tesla");
+	case OWNER_IONITY:
+		return ("Ionity");
 	default:
 		return ("Other");
 	}
@@ -82,6 +86,8 @@ NobildOwner2Link(int value)
 		return ("https://gronnkontakt.no");
 	case OWNER_TESLA:
 		return ("https://www.tesla.com");
+	case OWNER_IONITY:
+		return ("https://ionity.eu");
 	default:
 		return ("index.html");
 	}
@@ -162,8 +168,10 @@ NobildOutputXML(nobild_head_t *phead, QString & output, uint64_t type_mask, uint
 			found |= (pc->capacity_max >= 0 && pc->capacity_max < 20);
 		if (kw_mask & KW_20_40_MASK)
 			found |= (pc->capacity_max >= 20 && pc->capacity_max < 40);
-		if (kw_mask & KW_40_MAX_MASK)
-			found |= (pc->capacity_max >= 40);
+		if (kw_mask & KW_40_80_MASK)
+			found |= (pc->capacity_max >= 40 && pc->capacity_max < 80);
+		if (kw_mask & KW_80_MAX_MASK)
+			found |= (pc->capacity_max >= 80);
 
 		if (found == 0)
 			continue;
@@ -525,6 +533,8 @@ NobildOutputJS(nobild_head_t *phead)
 {
 	size_t type_max[TYPE_MAX] = {};
 	size_t owner_max[OWNER_MAX] = {};
+	size_t kw_more[KW_MAX] = {};
+	size_t kw_less[KW_MAX] = {};
 	size_t owner_total = 0;
 	nobild_cache *pc;
 	QString js;
@@ -532,8 +542,12 @@ NobildOutputJS(nobild_head_t *phead)
 	TAILQ_FOREACH(pc, phead, entry) {
 		owner_max[pc->owner]++;
 		owner_total++;
-		for (int x = 0; x != TYPE_MAX; x++) {
+		for (int x = 0; x != TYPE_MAX; x++)
 			type_max[x] += pc->type[x];
+
+		for (int x = 0; x != KW_MAX; x++) {
+			kw_more[x] += (pc->capacity_max >= (20.0 * (1 << x)));
+			kw_less[x] += (pc->capacity_max < (20.0 * (1 << x)));
 		}
 	}
 
@@ -545,10 +559,12 @@ NobildOutputJS(nobild_head_t *phead)
 	js += "<th>";
 	js += "<div align=\"left\"><div align=\"top\">";
 	js += "<input type=\"radio\" name=\"kw\" value=\"-1\" checked=\"checked\" /> All kW rates<br>";
-	js += "<input type=\"radio\" name=\"kw\" value=\"1\" /> Less than 20 kW<br>";
-	js += "<input type=\"radio\" name=\"kw\" value=\"3\" /> Less than 40 kW<br>";
-	js += "<input type=\"radio\" name=\"kw\" value=\"-2\" /> More than 20 kW<br>";
-	js += "<input type=\"radio\" name=\"kw\" value=\"-4\" /> More than 40 kW<br>";
+	js += QString("<input type=\"radio\" name=\"kw\" value=\"1\" /> Less than 20 kW (%1 stations)<br>").arg(kw_less[KW_0_20]);
+	js += QString("<input type=\"radio\" name=\"kw\" value=\"3\" /> Less than 40 kW (%1 stations)<br>").arg(kw_less[KW_20_40]);
+	js += QString("<input type=\"radio\" name=\"kw\" value=\"7\" /> Less than 80 kW (%1 stations)<br>").arg(kw_less[KW_40_80]);
+	js += QString("<input type=\"radio\" name=\"kw\" value=\"-2\" /> More than 20 kW (%1 stations)<br>").arg(kw_more[KW_0_20]);
+	js += QString("<input type=\"radio\" name=\"kw\" value=\"-4\" /> More than 40 kW (%1 stations)<br>").arg(kw_more[KW_20_40]);
+	js += QString("<input type=\"radio\" name=\"kw\" value=\"-8\" /> More than 80 kW (%1 stations)<br>").arg(kw_more[KW_40_80]);
 	js += "</div></div>";
 	js += "</th>";
 
