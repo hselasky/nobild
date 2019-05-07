@@ -206,6 +206,7 @@ NobildParseXML(const QByteArray & data, nobild_head_t *phead)
 	QString position;
 	QString name;
 	QString owned_by;
+	QString user_comment;
 	QString attrtypeid;
 	QString attrvalid;
 	QString trans;
@@ -234,6 +235,7 @@ NobildParseXML(const QByteArray & data, nobild_head_t *phead)
 				position = QString();
 				name = QString();
 				owned_by = QString();
+				user_comment = QString();
 				memset(opt_type, 0, sizeof(opt_type));
 				opt_24h = 0;
 				opt_public = 0;
@@ -266,6 +268,15 @@ NobildParseXML(const QByteArray & data, nobild_head_t *phead)
 				if (token != QXmlStreamReader::Characters)
 					continue;
 				owned_by = xml.text().toString();
+			} else if (si == 4 &&
+				   tags[0] == "chargerstations" &&
+				   tags[1] == "chargerstation" &&
+				   tags[2] == "metadata" &&
+				   tags[3] == "user_comment") {
+				token = xml.readNext();
+				if (token != QXmlStreamReader::Characters)
+					continue;
+				user_comment = xml.text().toString();
 			} else if (si == 5 &&
 				   tags[0] == "chargerstations" &&
 				   tags[1] == "chargerstation" &&
@@ -372,8 +383,11 @@ NobildParseXML(const QByteArray & data, nobild_head_t *phead)
 				int offset;
 
 				owner = NobildStr2Owner(owned_by);
-				if (owner == OWNER_OTHER)
+				if (owner == OWNER_OTHER) {
 					owner = NobildStr2Owner(name);
+					if (owner == OWNER_OTHER)
+						owner = NobildStr2Owner(user_comment);
+				}
 
 				for (x = 2, offset = position.size(); x > -1 && offset--;) {
 					if (position[offset].isNumber()) {
