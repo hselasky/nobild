@@ -56,6 +56,8 @@ NobildOwner2Str(int value)
 {
 
 	switch (value) {
+	case OWNER_BEE:
+		return ("Bee");
 	case OWNER_CLEVER:
 		return ("Clever");
 	case OWNER_EON:
@@ -78,6 +80,8 @@ NobildOwner2Link(int value)
 {
 
 	switch (value) {
+	case OWNER_BEE:
+		return ("https://bee.se");
 	case OWNER_CLEVER:
 		return ("https://clever.dk");
 	case OWNER_EON:
