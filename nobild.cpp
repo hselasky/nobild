@@ -33,7 +33,9 @@ NobildStr2Owner(const QString & str)
 {
 	QString upper = str.toUpper();
 
-	if (upper.indexOf("CLEVER") > -1)
+	if (upper.indexOf("BEE") == 0)
+		return (OWNER_BEE);
+	else if (upper.indexOf("CLEVER") > -1)
 		return (OWNER_CLEVER);
 	else if (upper.indexOf("E.ON") > -1)
 		return (OWNER_EON);
