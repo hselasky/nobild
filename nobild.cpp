@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2017-2019 Hans Petter Selasky. All rights reserved.
+ * Copyright (c) 2017-2021 Hans Petter Selasky. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,13 +35,15 @@ NobildStr2Owner(const QString & str)
 
 	if (upper.indexOf("BEE") == 0)
 		return (OWNER_BEE);
+	else if (upper == "BKK")
+		return (OWNER_BKK);
 	else if (upper.indexOf("CLEVER") > -1)
 		return (OWNER_CLEVER);
 	else if (upper.indexOf("E.ON") > -1)
 		return (OWNER_EON);
-	else if (upper.indexOf("FORTUM") > -1)
+	else if (upper.indexOf("FORTUM") > -1 || upper == "RECHARGE")
 		return (OWNER_FORTUM);
-	else if (upper.indexOf("GRØNN KONTAKT") > -1)
+	else if (upper.indexOf("GRØNN KONTAKT") > -1 || upper == "MER")
 		return (OWNER_GRONNKONTAKT);
 	else if (upper.indexOf("TESLA") > -1)
 		return (OWNER_TESLA);
@@ -58,14 +60,16 @@ NobildOwner2Str(int value)
 	switch (value) {
 	case OWNER_BEE:
 		return ("Bee");
+	case OWNER_BKK:
+		return ("BKK");
 	case OWNER_CLEVER:
 		return ("Clever");
 	case OWNER_EON:
 		return ("E.ON");
 	case OWNER_FORTUM:
-		return ("Fortum");
+		return ("Recharge");
 	case OWNER_GRONNKONTAKT:
-		return ("Grønn Kontakt");
+		return ("Mer");
 	case OWNER_TESLA:
 		return ("Tesla");
 	case OWNER_IONITY:
@@ -82,14 +86,16 @@ NobildOwner2Link(int value)
 	switch (value) {
 	case OWNER_BEE:
 		return ("https://bee.se");
+	case OWNER_BKK:
+		return ("https://www.bilkraft.no");
 	case OWNER_CLEVER:
 		return ("https://clever.dk");
 	case OWNER_EON:
 		return ("https://www.eon.com");
 	case OWNER_FORTUM:
-		return ("https://fortum.no");
+		return ("http://www.rechargeinfra.com");
 	case OWNER_GRONNKONTAKT:
-		return ("https://gronnkontakt.no");
+		return ("https://no.mer.eco");
 	case OWNER_TESLA:
 		return ("https://www.tesla.com");
 	case OWNER_IONITY:
@@ -176,8 +182,10 @@ NobildOutputXML(nobild_head_t *phead, QString & output, uint64_t type_mask, uint
 			found |= (pc->capacity_max >= 20 && pc->capacity_max < 40);
 		if (kw_mask & KW_40_80_MASK)
 			found |= (pc->capacity_max >= 40 && pc->capacity_max < 80);
-		if (kw_mask & KW_80_MAX_MASK)
-			found |= (pc->capacity_max >= 80);
+		if (kw_mask & KW_80_160_MASK)
+			found |= (pc->capacity_max >= 80 && pc->capacity_max < 160);
+		if (kw_mask & KW_160_MAX_MASK)
+			found |= (pc->capacity_max >= 160);
 
 		if (found == 0)
 			continue;
@@ -582,9 +590,11 @@ NobildOutputJS(nobild_head_t *phead)
 	js += QString("<input type=\"radio\" name=\"kw\" value=\"1\" /> Less than 20 kW (%1 stations)<br>").arg(kw_less[KW_0_20]);
 	js += QString("<input type=\"radio\" name=\"kw\" value=\"3\" /> Less than 40 kW (%1 stations)<br>").arg(kw_less[KW_20_40]);
 	js += QString("<input type=\"radio\" name=\"kw\" value=\"7\" /> Less than 80 kW (%1 stations)<br>").arg(kw_less[KW_40_80]);
+	js += QString("<input type=\"radio\" name=\"kw\" value=\"15\" /> Less than 160 kW (%1 stations)<br>").arg(kw_less[KW_80_160]);
 	js += QString("<input type=\"radio\" name=\"kw\" value=\"-2\" /> More than 20 kW (%1 stations)<br>").arg(kw_more[KW_0_20]);
 	js += QString("<input type=\"radio\" name=\"kw\" value=\"-4\" /> More than 40 kW (%1 stations)<br>").arg(kw_more[KW_20_40]);
 	js += QString("<input type=\"radio\" name=\"kw\" value=\"-8\" /> More than 80 kW (%1 stations)<br>").arg(kw_more[KW_40_80]);
+	js += QString("<input type=\"radio\" name=\"kw\" value=\"-16\" /> More than 160 kW (%1 stations)<br>").arg(kw_more[KW_80_160]);
 	js += "</div></div>";
 	js += "</th>";
 

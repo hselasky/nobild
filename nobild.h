@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2017-2019 Hans Petter Selasky. All rights reserved.
+ * Copyright (c) 2017-2021 Hans Petter Selasky. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,6 +58,7 @@ enum {
 	OWNER_FORTUM,
 	OWNER_GRONNKONTAKT,
 	OWNER_BEE,
+	OWNER_BKK,
 	OWNER_CLEVER,
 	OWNER_EON,
 	OWNER_TESLA,
@@ -70,7 +71,8 @@ enum {
 	KW_0_20,
 	KW_20_40,
 	KW_40_80,
-	KW_80_MAX,
+	KW_80_160,
+	KW_160_MAX,
 	KW_MAX,
 };
 
@@ -78,7 +80,8 @@ enum {
 	KW_0_20_MASK = 1 << KW_0_20,
 	KW_20_40_MASK = 1 << KW_20_40,
 	KW_40_80_MASK = 1 << KW_40_80,
-	KW_80_MAX_MASK = 1 << KW_80_MAX,
+	KW_80_160_MASK = 1 << KW_80_160,
+	KW_160_MAX_MASK = 1 << KW_160_MAX,
 };
 
 class nobild_cache {
