@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2017-2021 Hans Petter Selasky. All rights reserved.
+ * Copyright (c) 2017-2022 Hans Petter Selasky. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,7 +35,7 @@ NobildStr2Owner(const QString & str)
 
 	if (upper.indexOf("BEE") == 0)
 		return (OWNER_BEE);
-	else if (upper == "BKK")
+	else if (upper == "EVINY" || upper == "BKK")
 		return (OWNER_BKK);
 	else if (upper.indexOf("CLEVER") > -1)
 		return (OWNER_CLEVER);
@@ -61,7 +61,7 @@ NobildOwner2Str(int value)
 	case OWNER_BEE:
 		return ("Bee");
 	case OWNER_BKK:
-		return ("BKK");
+		return ("Eviny");
 	case OWNER_CLEVER:
 		return ("Clever");
 	case OWNER_EON:
@@ -87,7 +87,7 @@ NobildOwner2Link(int value)
 	case OWNER_BEE:
 		return ("https://bee.se");
 	case OWNER_BKK:
-		return ("https://www.bilkraft.no");
+		return ("https://www.eviny.no");
 	case OWNER_CLEVER:
 		return ("https://clever.dk");
 	case OWNER_EON:
