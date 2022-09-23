@@ -167,7 +167,7 @@ NobildOutputXML(nobild_head_t *phead, QString & output, uint64_t type_mask, uint
 
 	output =
 	    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-	    "<gpx xmlns=\"http://www.topografix.com/GPX/1/1\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd\" version=\"1.1\" creator=\"home.selasky.org/charging - datagrunnlaget er hentet fra http://nobil.no\">\n";
+	    "<gpx xmlns=\"http://www.topografix.com/GPX/1/1\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd\" version=\"1.1\" creator=\"www.selasky.org/charging - datagrunnlaget er hentet fra http://nobil.no\">\n";
 
 	TAILQ_FOREACH(pc, phead, entry) {
 		bool found = 0;
