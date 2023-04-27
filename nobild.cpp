@@ -888,7 +888,11 @@ top:
 
 	QProcess fetch;
 
-	fetch.start(QString("fetch -qo /dev/stdout http://nobil.no/api/server/datadump.php?apikey=%1&format=xml&file=false").arg(apikey));
+	QStringList args;
+
+	args << "-qo" << "/dev/stdout" << QString("http://nobil.no/api/server/datadump.php?apikey=%1&format=xml&file=false").arg(apikey);
+
+	fetch.start("fetch", args);
 	fetch.waitForFinished(-1);
 
 	if (fetch.exitStatus() != QProcess::NormalExit) {
