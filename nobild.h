@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2017-2021 Hans Petter Selasky. All rights reserved.
+ * Copyright (c) 2017-2023 Hans Petter Selasky
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,8 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <iostream>
+#include <ctype.h>
+#include <stdlib.h>
 
 #include <sys/queue.h>
 
@@ -77,6 +79,12 @@ enum {
 };
 
 enum {
+	ICON_Z,
+	ICON_S,
+	ICON_MAX,
+};
+
+enum {
 	KW_0_20_MASK = 1 << KW_0_20,
 	KW_20_40_MASK = 1 << KW_20_40,
 	KW_40_80_MASK = 1 << KW_40_80,
@@ -87,11 +95,42 @@ enum {
 class nobild_cache {
 public:
 	TAILQ_CLASS_ENTRY(nobild_cache) entry;
-	QString output;
+	QString output_gpx;
+	QString output_kml;
 	int owner;
 	float capacity_min;
 	float capacity_max;
   	size_t type[TYPE_MAX];
+
+	int64_t get_owner_mask() const {
+		return (1LL << owner);
+	}
+
+	int64_t get_kw_mask() const {
+		int64_t kw_mask = 0;
+
+		if (capacity_max >= 0 && capacity_max < 20)
+			kw_mask |= KW_0_20_MASK;
+		if (capacity_max >= 20 && capacity_max < 40)
+			kw_mask |= KW_20_40_MASK;
+		if (capacity_max >= 40 && capacity_max < 80)
+			kw_mask |= KW_40_80_MASK;
+		if (capacity_max >= 80 && capacity_max < 160)
+			kw_mask |= KW_80_160_MASK;
+		if (capacity_max >= 160)
+			kw_mask |= KW_160_MAX_MASK;
+		return (kw_mask);
+	}
+
+	int64_t get_type_mask()  const {
+		int64_t type_mask = 0;
+
+		for (int x = 0; x != TYPE_MAX; x++) {
+			if (type[x] != 0)
+				type_mask |= 1LL << x;
+		}
+		return (type_mask);
+	}
 };
 
 typedef TAILQ_CLASS_HEAD(, nobild_cache) nobild_head_t;
