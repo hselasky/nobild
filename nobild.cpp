@@ -38,17 +38,17 @@ NobildStr2Owner(const QString & str)
 {
 	QString upper = str.toUpper();
 
-	if (upper.indexOf("BEE") == 0)
+	if (upper.startsWith("BEE "))
 		return (OWNER_BEE);
-	else if (upper == "EVINY" || upper == "BKK")
+	else if (upper.startsWith("EVINY ") || upper.startsWith("BKK "))
 		return (OWNER_BKK);
 	else if (upper.indexOf("CLEVER") > -1)
 		return (OWNER_CLEVER);
 	else if (upper.indexOf("E.ON") > -1)
 		return (OWNER_EON);
-	else if (upper.indexOf("FORTUM") > -1 || upper == "RECHARGE")
+	else if (upper.indexOf("FORTUM") > -1 || upper.startsWith("RECHARGE "))
 		return (OWNER_FORTUM);
-	else if (upper.indexOf("GRØNN KONTAKT") > -1 || upper == "MER")
+	else if (upper.indexOf("GRØNN KONTAKT") > -1 || upper.startsWith("MER "))
 		return (OWNER_GRONNKONTAKT);
 	else if (upper.indexOf("TESLA") > -1)
 		return (OWNER_TESLA);
