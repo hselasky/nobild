@@ -26,7 +26,7 @@
 #include "nobild.h"
 
 static QString apikey;
-static QString output_directory = ".";
+static QString output_file;
 
 static QString icon_url[ICON_MAX] = {
 	"http://www.selasky.org/charging/gfx_map_symbol_low.png",
@@ -859,7 +859,7 @@ NobildOutputJS(nobild_head_t *phead)
 	js += "a.click();\n";
 	js += "}\n";
 
-	QFile file(output_directory + "/ev_charger_stations.js");
+	QFile file(output_file);
 
 	if (!file.open(QFile::WriteOnly | QFile::Truncate))
 		return (EINVAL);
@@ -872,7 +872,7 @@ NobildOutputJS(nobild_head_t *phead)
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: nobild\n");
+	fprintf(stderr, "usage: nobild -o <filename.js> -a <apikey>\n");
 	exit(EX_USAGE);
 }
 
@@ -928,7 +928,7 @@ main(int argc, char **argv)
 	while ((c = getopt(argc, argv, optstring)) != -1) {
 		switch (c) {
 		case 'o':
-			output_directory = QString::fromLatin1(optarg);
+			output_file = QString::fromLatin1(optarg);
 			break;
 		case 'a':
 			apikey = QString::fromLatin1(optarg);
@@ -938,6 +938,9 @@ main(int argc, char **argv)
 			break;
 		}
 	}
+
+	if (output_file.isEmpty())
+		usage();
 
 	if (apikey.isEmpty())
 		usage();
